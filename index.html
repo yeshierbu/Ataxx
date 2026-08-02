@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎮 同化棋 Ataxx</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI','Microsoft YaHei',system-ui,sans-serif;background:#f5f3ef;color:#2c2c2c;display:flex;flex-direction:column;align-items:center;padding:16px}
+.topbar{width:100%;max-width:860px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.topbar h1{font-size:20px;font-weight:700}
+.mode-btns{display:flex;gap:6px}
+.mode-btn{padding:6px 14px;border:none;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#888;border:1px solid #ddd9cc;transition:.15s}
+.mode-btn.active{background:#4a90d9;color:#fff;border-color:#4a90d9}
+.game-area{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;justify-content:center}
+.board-container{background:#fff;border-radius:14px;padding:16px;box-shadow:0 3px 16px rgba(0,0,0,.05)}
+.board-wrap{position:relative;padding:14px;background:linear-gradient(145deg,#f8f6f0,#f0ece0);border-radius:8px}
+.board{display:grid;grid-template-columns:repeat(7,56px);grid-template-rows:repeat(7,56px);gap:1px;position:relative}
+.cell{width:56px;height:56px;display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;border-radius:2px;transition:background .08s}
+.cell.c0{background:#efebe0}.cell.c1{background:#e5dfd2}.cell:hover{filter:brightness(.95)}
+.piece{width:36px;height:36px;border-radius:50%;position:relative;transition:transform .12s}
+.piece.bk{background:radial-gradient(circle at 30% 25%,#555,#252530 55%,#151518);box-shadow:0 2px 4px rgba(0,0,0,.25)}
+.piece.wt{background:radial-gradient(circle at 30% 25%,#fff,#eee 55%,#bbb);box-shadow:0 2px 4px rgba(0,0,0,.1)}
+.sel-ring{position:absolute;inset:1px;border:2.5px solid #4a90d9;border-radius:4px;pointer-events:none;z-index:4;animation:.12s ease-out both}
+@keyframes sr{from{opacity:0;transform:scale(1.15)}to{opacity:1;transform:scale(1)}}
+.dot{position:absolute;width:16px;height:16px;border-radius:50%;background:#4a90d9;z-index:5;animation:.15s ease-out both;box-shadow:0 0 5px rgba(74,144,217,.5)}
+.dot::after{content:'';position:absolute;top:3px;left:3px;width:6px;height:6px;background:rgba(255,255,255,.7);border-radius:50%}
+@keyframes dt{from{transform:scale(0)}to{transform:scale(1)}}
+.last-dot{position:absolute;inset:1px;border:2px solid #e87a50;border-radius:4px;pointer-events:none;z-index:3;animation:.15s ease-out both}
+@keyframes ld{from{transform:scale(1.25);opacity:0}to{transform:scale(1);opacity:1}}
+.sidebar{width:170px}
+.panel{background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+.panel-title{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.score-row{display:flex;justify-content:space-between;align-items:baseline;margin:4px 0}
+.score-label{font-size:13px;font-weight:600}.score-num{font:bold 20px/1 Consolas,monospace}
+.nb{color:#2a2a35}.nw{color:#aaa}
+.bar{height:5px;background:#eee;border-radius:3px;overflow:hidden;margin-top:6px}
+.bar>div{height:100%;border-radius:3px;display:flex}.bb{background:#2a2a35}.bw{background:#ddd}
+.turn-box{margin-top:8px;padding:8px 9px;background:#fafafa;border-radius:7px;text-align:center}
+.turn-txt{font-size:13px;font-weight:600}.tbk{color:#2a2a35}.twt{color:#999}
+.rnd{font-size:11px;color:#888;margin-top:2px}
+.ai-info{font-size:11px;color:#6ab080;margin-top:3px;display:none;height:16px}
+.toolbar{width:100%;max-width:860px;display:flex;justify-content:center;gap:7px;margin-top:12px;flex-wrap:wrap}
+.btn{padding:7px 18px;border:none;border-radius:7px;font:12px 'Microsoft YaHei';cursor:pointer;transition:.12s;background:#fff;color:#333;border:1px solid #ddd9cc;font-weight:500}
+.btn:hover{background:#f0ece0;transform:translateY(-1px)}
+.btn.pri{background:#4a90d9;color:#fff;border-color:#4a90d9}.btn.pri:hover{background:#3a80c9}
+.overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.35);display:none;justify-content:center;align-items:center;z-index:100}
+.overlay.on{display:flex}
+.modal{background:#fff;border-radius:14px;padding:28px 36px;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,.12);animation:.25s ease-out}
+@keyframes mo{from{opacity:0;transform:scale(.92) translateY(16px)}to{opacity:1;transform:scale(1)}}
+.modal h2{font-size:24px;margin-bottom:6px}.modal p{color:#888;font-size:13px;margin-bottom:16px}
+.rs{font-size:44px;font-weight:800;margin:10px 0}.rs .nb{color:#2a2a35}.rs .nw{color:#aaa}
+.modal button{padding:9px 28px;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;background:#4a90d9;color:#fff}
+.modal button:hover{background:#3a80c9}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(50px);background:#333;color:#f5f3ef;padding:9px 22px;border-radius:22px;font-size:12px;font-weight:500;opacity:0;transition:.25s;z-index:200;pointer-events:none}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.coord{position:absolute;color:#bbb;font:bold 9px Consolas,monospace;pointer-events:none}
+@media(max-width:680px){
+.board{grid-template-columns:repeat(7,44px);grid-template-rows:repeat(7,44px)}
+.cell{width:44px;height:44px}.piece{width:28px;height:28px}.dot{width:13px;height:13px}
+.sidebar{width:150px}.panel{padding:9px 11px}.score-num{font-size:17px}
+}
+@media(max-width:500px){body{padding:10px}.topbar{flex-direction:column}.game-area{flex-direction:column}.sidebar{width:100%;max-width:340px;flex-direction:row;flex-wrap:wrap}.sidebar .panel{flex:1;min-width:140px}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+<h1>🎮 同化棋 Ataxx</h1>
+<div class="mode-btns">
+<button class="mode-btn active" data-m="pvp" id="btnPvp">👥 人人对战</button>
+<button class="mode-btn" data-m="easy" id="btnEasy">🤖 简单AI</button>
+<button class="mode-btn" data-m="hard" id="btnHard">🧠 困难AI</button>
+</div>
+</div>
+
+<div class="game-area">
+<div class="board-container">
+<div class="board-wrap">
+<div class="coord" style="top:2px;left:24px;display:flex;gap:47px"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>
+<div class="board" id="bd"></div>
+<div class="coord" style="top:50%;left:-11px;display:flex;flex-direction:column;gap:45px;justify-content:center"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>
+<div class="coord" style="bottom:0;left:24px;display:flex;gap:47px"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>
+</div>
+</div>
+<div class="sidebar">
+<div class="panel">
+<div class="panel-title">📊 对局状态</div>
+<div class="score-row"><span class="score-label">⚫ 黑方</span><span class="score-num nb" id="scB">2</span></div>
+<div class="score-row"><span class="score-label">⚪ 白方</span><span class="score-num nw" id="scW">2</span></div>
+<div class="bar"><div style="width:50%" class="bb" id="barB"></div><div style="width:50%" class="bw" id="barW"></div></div>
+<div class="turn-box"><div class="turn-text tbk" id="tt">▶ ⚫ 黑方行棋</div><div class="rnd" id="rt">第 0 回合</div><div class="ai-info" id="aiI"></div></div>
+</div>
+</div>
+</div>
+
+<div class="toolbar">
+<button class="btn pri" id="btnRestart">🔄 重新开始</button>
+<button class="btn" id="btnUndo">↩ 悔棋</button>
+<button class="btn" id="btnPass">⏭ 跳过</button>
+</div>
+
+<div class="overlay" id="ov"><div class="modal">
+<h2 id="ovT">🏆 游戏结束</h2><p id="ovD"></p>
+<div class="rs" id="ovS"></div>
+<button onclick="clsO();doRestart();">再来一局</button>
+</div></div>
+<div class="toast" id="tst"></div>
+
+<script>
+// ========== 引擎 ==========
+var S=7,BLK=1,WHT=-1;
+// 24个方向：0-7=复制(距离1), 8-23=移动(距离2)
+var DIR=[[1,1],[0,1],[-1,1],[-1,0],[-1,-1],[0,-1],[1,-1],[1,0],
+         [2,0],[2,1],[2,2],[1,2],[0,2],[-1,2],[-2,2],[-2,1],[-2,0],[-2,-1],[-2,-2],[-1,-2],[0,-2],[1,-2],[2,-2],[2,-1]];
+
+// 全局状态
+var G=[],cur=BLK,bC=2,wC=2,tn=0,over=false,win=0,hist=[],selX=-1,selY=-1,lastX=-1,lastY=-1,mode='pvp';
+
+// 位置价值表（中心高）
+var PV=[
+[-4,0,1,2,1,0,-4],
+[0,2,3,4,3,2,0],
+[1,3,4,6,4,3,1],
+[2,4,6,8,6,4,2],
+[1,3,4,6,4,3,1],
+[0,2,3,4,3,2,0],
+[-4,0,1,2,1,0,-4]
+];
+
+// DOM 缓存（避免重复创建）
+var cells=[],cellEls=[];
+
+function init(){
+  var r,c;
+  G=[];
+  for(r=0;r<S;r++){G[r]=[];for(c=0;c<S;c++)G[r][c]=0;}
+  G[0][0]=G[6][6]=BLK;G[6][0]=G[0][6]=WHT;
+  bC=2;wC=2;cur=BLK;tn=0;over=false;win=0;hist=[];selX=-1;selY=-1;lastX=-1;lastY=-1;
+}
+
+function inB(x,y){return x>=0&&x<S&&y>=0&&y<S;}
+
+// 获取合法走法（返回 [x0,y0,x1,y1] 数组，无走法返回 [[-1]]）
+function getMoves(col){
+  var mv=[],x,y,d,nx,ny;
+  for(y=0;y<S;y++)for(x=0;x<S;x++){
+    if(G[x][y]!==col)continue;
+    for(d=0;d<24;d++){nx=x+DIR[d][0];ny=y+DIR[d][1];if(inB(nx,ny)&&G[nx][ny]===0)mv.push([x,y,nx,ny]);}
+  }
+  if(!mv.length)mv=[[-1]];
+  return mv;
+}
+
+// 执行落子（返回是否成功）
+function doM(m){
+  var x0=m[0],y0=m[1],x1=m[2],y1=m[3],dx=Math.abs(x0-x1),dy=Math.abs(y0-y1),d,nx,ny,fl=0;
+  if(m[0]===-1){cur=-cur;chkEnd();return true;}
+  if(G[x0][y0]!==cur||dx>2||dy>2||(!dx&&!dy)||G[x1][y1]!==0)return false;
+  // 复制(<=1)：原位保留；移动(>=2)：原位清空
+  if(dx>=2||dy>=2)G[x0][y0]=0;
+  else{if(cur===BLK)bC++;else wC++;}
+  G[x1][y1]=cur;
+  // 翻转周围8格敌方棋子
+  for(d=0;d<8;d++){nx=x1+DIR[d][0];ny=y1+DIR[d][1];if(inB(nx,ny)&&G[nx][ny]===-cur){G[nx][ny]=cur;fl++;}}
+  if(fl>0){if(cur===BLK){bC+=fl;wC-=fl;}else{wC+=fl;bC-=fl;}}
+  hist.push({m:[x0,y0,x1,y1],g:cloneG(),b:bC,w:wC,c:cur});
+  tn++;lastX=x1;lastY=y1;
+  cur=-cur;
+  chkEnd();
+  return true;
+}
+
+function cloneG(){var r,c,g=[];for(r=0;r<S;r++){g[r]=[];for(c=0;c<S;c++)g[r][c]=G[r][c];}return g;}
+
+function chkEnd(){
+  if(wC===0){over=true;win=BLK;return;}
+  if(bC===0){over=true;win=WHT;return;}
+  var mm=getMoves(cur),om=getMoves(-cur);
+  if(mm.length===1&&mm[0][0]===-1&&om.length===1&&om[0][0]===-1){
+    over=true;win=bC>wC?BLK:bC<wC?WHT:0;
+  }
+}
+
+// ========== AI ==========
+function aiPick(diff){
+  var moves=getMoves(cur);
+  if(!moves.length||(moves.length===1&&moves[0][0]===-1))return[-1];
+
+  if(diff==='easy'){
+    var best=null,bestS=-99999,i,m,sg,fl,dx,dy,d,nx,ny,sc,tb,tw;
+    for(i=0;i<moves.length;i++){
+      m=moves[i];if(m[0]===-1)continue;
+      sg=cloneG();fl=0;dx=Math.abs(m[0]-m[2]);dy=Math.abs(m[1]-m[3]);
+      tb=cur===BLK?bC+1:bC;tw=cur===BLK?wC:wC+1;
+      if(dx>=2||dy>=2){sg[m[0]][m[1]]=0;}/*复制不加计数*/
+      sg[m[2]][m[3]]=cur;
+      for(d=0;d<8;d++){nx=m[2]+DIR[d][0];ny=m[3]+DIR[d][1];if(inB(nx,ny)&&sg[nx][ny]==-cur){sg[nx][ny]=cur;fl++;}}
+      sc=fl*18+(dx<=1&&dy<=1?10:0)+PV[m[2]][m[3]]*3;
+      if(sc>bestS){bestS=sc;best=m;}
+    }
+    return best||moves[Math.floor(Math.random()*moves.length)];
+  }
+
+  // 困难AI：Minimax Alpha-Beta，迭代加深，时间限制800ms
+  var t0=performance.now(),TL=800,best=null,bestS=-Infinity,md,i,m,s;
+  for(md=1;md<=3;md++){
+    if(performance.now()-t0>TL)break;
+    var tB=null,tBS=-Infinity;
+    for(i=0;i<moves.length;i++){
+      m=moves[i];if(m[0]===-1)continue;
+      s=simEval(m,md,-Infinity,Infinity,true,t0,TL);
+      if(s>tBS){tBS=s;tB=m;}
+      if(performance.now()-t0>TL)break;
+    }
+    if(performance.now()-t0<=TL){best=tB;bestS=tBS;}
+  }
+  return best||moves[0];
+}
+
+// 模拟一步并评估（使用局部变量，不污染全局）
+function simEval(m,depth,a,b,maxi,t0,tl){
+  var sg=cloneG(),col=cur,x0=m[0],y0=m[1],x1=m[2],y1=m[3];
+  var dx=Math.abs(x0-x1),dy=Math.abs(y0-y1);
+  var sb=cur===BLK?bC+1:bC,sw=cur===BLK?wC:wC+1;// 局部副本
+  var d,nx,ny,fl=0;
+  if(dx>=2||dy>=2)sg[x0][y0]=0;
+  sg[x1][y1]=col;
+  for(d=0;d<8;d++){nx=x1+DIR[d][0];ny=y1+DIR[d][1];if(inB(nx,ny)&&sg[nx][ny]===-col){sg[nx][ny]=col;fl++;}}
+  if(fl>0){if(col===BLK){sb+=fl;sw-=fl;}else{sw+=fl;sb-=fl;}}
+  return mm(sg,depth-1,-b,-a,!maxi,-col,sb,sw,t0,tl);
+}
+
+// Minimax核心（所有参数都是局部传入）
+function mm(g,depth,a,b,maxi,player,sb,sw,t0,tl){
+  var x,y,d,nx,ny,mvs=[],m,p,dx2,dy2,fl2,sc,v,i,sg2,sb2,sw2;
+  if(depth<=0||performance.now()-t0>tl)return ev(g,player,sb,sw);
+  for(y=0;y<S;y++)for(x=0;x<S;x++){
+    if(g[x][y]!==player)continue;
+    for(d=0;d<24;d++){nx=x+DIR[d][0];ny=y+DIR[d][1];if(inB(nx,ny)&&g[nx][ny]===0)mvs.push([x,y,nx,ny]);}
+  }
+  if(!mvs.length)return maxi?-99999:99999;
+  if(maxi){
+    v=-Infinity;
+    for(i=0;i<mvs.length;i++){
+      m=mvs[i];sg2=cloneG2(g);p=player;dx2=Math.abs(m[0]-m[2]);dy2=Math.abs(m[1]-m[3]);
+      sb2=sb;sw2=sw;
+      if(dx2>=2||dy2>=2)sg2[m[0]][m[1]]=0;else{if(p===BLK)sb2++;else sw2++;}
+      sg2[m[2]][m[3]]=p;fl2=0;
+      for(d=0;d<8;d++){nx=m[2]+DIR[d][0];ny=m[3]+DIR[d][1];if(inB(nx,ny)&&sg2[nx][ny]===-p){sg2[nx][ny]=p;fl2++;}}
+      if(fl2>0){if(p===BLK){sb2+=fl2;sw2-=fl2;}else{sw2+=fl2;sb2-=fl2;}}
+      sc=mm(sg2,depth-1,a,b,false,-p,sb2,sw2,t0,tl);
+      if(sc>v)v=sc;if(sc>a)a=sc;if(a>=b)break;if(performance.now()-t0>tl)break;
+    }return v;
+  }else{
+    v=Infinity;
+    for(i=0;i<mvs.length;i++){
+      m=mvs[i];sg2=cloneG2(g);p=player;dx2=Math.abs(m[0]-m[2]);dy2=Math.abs(m[1]-m[3]);
+      sb2=sb;sw2=sw;
+      if(dx2>=2||dy2>=2)sg2[m[0]][m[1]]=0;else{if(p===BLK)sb2++;else sw2++;}
+      sg2[m[2]][m[3]]=p;fl2=0;
+      for(d=0;d<8;d++){nx=m[2]+DIR[d][0];ny=m[3]+DIR[d][1];if(inB(nx,ny)&&sg2[nx][ny]===-p){sg2[nx][ny]=p;fl2++;}}
+      if(fl2>0){if(p===BLK){sb2+=fl2;sw2-=fl2;}else{sw2+=fl2;sb2-=fl2;}}
+      sc=mm(sg2,depth-1,a,b,true,-p,sb2,sw2,t0,tl);
+      if(sc<v)v=sc;if(sc<b)b=sc;if(b<=a)break;if(performance.now()-t0>tl)break;
+    }return v;
+  }
+}
+
+function cloneG2(g){var r,c,ng=[];for(r=0;r<S;r++){ng[r]=[];for(c=0;c<S;c++)ng[r][c]=g[r][c];}return ng;}
+
+// 评估函数
+function ev(g,me,sb,sw){
+  var x,y,tb=0,tw=0,cv=0;
+  for(y=0;y<S;y++)for(x=0;x<S;x++){
+    if(g[x][y]===BLK){tb++;cv+=PV[x][y];}
+    else if(g[x][y]===WHT){tw++;cv-=PV[x][y];}
+  }
+  return (me===BLK?(tb-tw):(tw-tb))*120+(me===BLK?cv:-cv)*8;
+}
+
+// ========== 渲染（增量更新，只改变化的格子）==========
+function $(id){return document.getElementById(id);}
+
+// 首次创建棋盘DOM（只执行一次）
+function buildBoard(){
+  var bd=$('bd'),x,y,cel;
+  bd.innerHTML='';
+  cells=[];cellEls=[];
+  for(y=0;y<S;y++){
+    cells[y]=[];cellEls[y]=[];
+    for(x=0;x<S;x++){
+      cel=document.createElement('div');
+      cel.className='cell '+((x+y)%2?'c1':'c0');
+      cel.setAttribute('data-x',x);cel.setAttribute('data-y',y);
+      (function(cx,cy){
+        cel.addEventListener('click',function(){onClick(cx,cy);});
+      })(x,y);
+      bd.appendChild(cel);
+      cells[y][x]={v:0,el:cel};
+      cellEls[y][x]=cel;
+    }
+  }
+}
+
+// 增量更新棋盘（只更新变化的部分）
+function draw(){
+  var x,y,el,v,needsClean=true,i,html='',r,d,mvs,m,mi;
+  // 更新每个格子的内容
+  for(y=0;y<S;y++)for(x=0;x<S;x++){
+    el=cellEls[y][x];v=G[x][y];
+    if(cells[y][x].v!==v||cells[y][x].sel!==((x===selX&&y===selY)?1:0)){
+      html= '';
+      if(v!==0){
+        html='<div class="piece '+(v===BLK?'bk':'wt')+
+             ((x===lastX&&y===lastY)?' new-in':'')+'"></div>';
+      }
+      el.innerHTML=html;
+      cells[y][x].v=v;
+    }
+  }
+
+  // 清除旧的标记层（选中框、可走点、最后落子标记）
+  // 用一个临时容器收集标记元素
+  var bd=$('bd'),marks=document.querySelectorAll('.sel-ring,.dot,.last-dot');
+  for(i=0;i<marks.length;i++)marks[i].remove();
+
+  // 选中框
+  if(selX>=0){
+    r=document.createElement('div');r.className='sel-ring';r.style.animationName='sr';
+    r.style.gridArea=(selY+1)+' / '+(selX+1)+' / span 1 / span 1';
+    bd.appendChild(r);
+  }
+
+  // 可走位置提示
+  if(selX>=0&&!over&&(mode==='pvp'||cur===BLK)){
+    mvs=getMoves(cur);
+    for(mi=0;mi<mvs.length;mi++){
+      m=mvs[mi];if(m[0]===-1)continue;
+      if(m[0]!==selX||m[1]!==selY)continue;
+      d=document.createElement('div');d.className='dot';d.style.animationName='dt';
+      d.style.gridArea=(m[3]+1)+' / '+(m[2]+1)+' / span 1 / span 1';
+      bd.appendChild(d);
+    }
+  }
+
+  // 最后落子标记
+  if(lastX>=0){
+    lm=document.createElement('div');lm.className='last-dot';lm.style.animationName='ld';
+    lm.style.gridArea=(lastY+1)+' / '+(lastX+1)+' / span 1 / span 1';
+    bd.appendChild(lm);
+  }
+
+  updUI();
+}
+
+function updUI(){
+  $('scB').textContent=bC;$('scW').textContent=wC;
+  var tot=(bC+wC)||1;
+  $('barB').style.width=(bC/tot*100)+'%';$('barW').style.width=(wC/tot*100+'%');
+  if(over){
+    $('tt').className='turn-text';
+    $('tt').innerHTML=win===BLK?'🏆 ⚫ 黑方获胜!':win===WHT?'🏆 ⚪ 白方获胜!':'🤝 平局!';
+  }else{
+    $('tt').innerHTML=(cur===BLK?'▶ ⚫':'▶ ⚪')+' 行棋';
+    $('tt').className='turn-text '+(cur===BLK?'tbk':'twt');
+  }
+  $('rt').textContent='第 '+tn+' 回合';
+}
+
+// ========== 交互 ==========
+function onClick(x,y){
+  var mvs,i,m,found;
+  if(over)return;
+  // AI模式且轮到AI时，忽略人类点击
+  if(mode!=='pvp'&&cur===WHT)return;
+
+  if(selX>=0){
+    // 已选中棋子 → 尝试落子到(x,y)
+    mvs=getMoves(cur);found=null;
+    for(i=0;i<mvs.length;i++){
+      m=mvs[i];if(m[0]===-1)continue;
+      if(m[0]===selX&&m[1]===selY&&m[2]===x&&m[3]===y){found=m;break;}
+    }
+    if(found){
+      doM(found);draw();
+      if(over){showOver();}
+      else if(mode!=='pvp'&&cur===WHT){setTimeout(aiGo,100);}
+      return;
+    }
+  }
+  // 选择/取消选择己方棋子
+  if(G[x][y]===cur){selX=x;selY=y;}
+  else{selX=-1;selY=-1;}
+  draw();
+}
+
+function setMode(m){
+  mode=m;
+  document.getElementById('btnPvp').classList.toggle('active',m==='pvp');
+  document.getElementById('btnEasy').classList.toggle('active',m==='easy');
+  document.getElementById('btnHard').classList.toggle('active',m==='hard');
+  doRestart();
+}
+
+function doRestart(){init();draw();}
+
+function doUndo(){
+  var h;
+  if(!hist.length){showT('没有可悔的步了');return;}
+  h=hist.pop();G=h.g;bC=h.b;wC=h.w;cur=h.c;tn--;
+  selX=-1;selY=-1;
+  lastX=hist.length?hist[hist.length-1].m[2]:-1;
+  lastY=hist.length?hist[hist.length-1].m[3]:-1;
+  over=false;draw();showT('已悔棋');
+}
+
+function doPass(){
+  var mvs,i;
+  if(over)return;
+  mvs=getMoves(cur);
+  for(i=0;i<mvs.length;i++){if(mvs[i][0]!==-1){showT('你还有合法走法！');return;}}
+  doM([-1]);draw();
+  if(over){showOver();}
+  else if(mode!=='pvp'&&cur===WHT){setTimeout(aiGo,80);}
+}
+
+function aiGo(){
+  var t0,m,ms;
+  if(over)return;
+  $('aiI').style.display='block';$('aiI').textContent='🧠 思考中...';
+  setTimeout(function(){
+    t0=performance.now();
+    m=aiPick(mode==='easy'?'easy':'hard');
+    ms=Math.round(performance.now()-t0);
+    $('aiI').textContent='🧠 '+ms+'ms';
+    if(m[0]===-1){doM([-1]);draw();if(over){showOver()}return;}
+    doM(m);draw();
+    if(over){showOver();}
+  },10);
+}
+
+function showOver(){
+  setTimeout(function(){
+    $('ov').classList.add('on');
+    if(win===BLK){$('ovT').textContent='🏆 黑方获胜!';$('ovD').textContent='黑方以更多棋子赢得比赛';}
+    else if(win===WHT){$('ovT').textContent='🏆 白方获胜!';$('ovD').textContent='白方以更多棋子赢得比赛';}
+    else{$('ovT').textContent='🤝 平局!';$('ovD').textContent='双方势均力敌';}
+    $('ovS').innerHTML='<span class="nb">'+bC+'</span> : <span class="nw">'+wC+'</span>';
+  },250);
+}
+function clsO(){$('ov').classList.remove('on');}
+
+function showT(msg){
+  var t=$('tst');t.textContent=msg;t.classList.add('on');
+  setTimeout(function(){t.classList.remove('on');},1600);
+}
+
+// ========== 初始化 ==========
+buildBoard();
+init();
+draw();
+
+// 绑定按钮
+document.getElementById('btnRestart').addEventListener('click',doRestart);
+document.getElementById('btnUndo').addEventListener('click',doUndo);
+document.getElementById('btnPass').addEventListener('click',doPass);
+document.getElementById('btnPvp').addEventListener('click',function(){setMode('pvp');});
+document.getElementById('btnEasy').addEventListener('click',function(){setMode('easy');});
+document.getElementById('btnHard').addEventListener('click',function(){setMode('hard');});
+</script>
+</body>
+</html>
