@@ -105,6 +105,15 @@ body{font-family:'Segoe UI','Microsoft YaHei',system-ui,sans-serif;background:#f
 <div class="rs" id="ovS"></div>
 <button onclick="clsO();doRestart();">再来一局</button>
 </div></div>
+<div class="overlay" id="undoOv"><div class="modal" style="max-width:340px">
+<h2>🔐 悔棋验证</h2><p>请输入两位数密码以确认悔棋</p>
+<input type="text" id="undoPwd" maxlength="2" placeholder="输入密码" style="width:120px;padding:8px 12px;border:2px solid #ddd;border-radius:7px;font-size:18px;text-align:center;letter-spacing:8px;font-weight:700;outline:none;margin-bottom:14px;display:block;margin-left:auto;margin-right:auto" onkeydown="if(event.key==='Enter')chkUndoPwd()">
+<p id="undoErr" style="color:#e74c3c;font-size:12px;height:14px;margin-bottom:10px"></p>
+<div style="display:flex;gap:8px;justify-content:center">
+<button onclick="chkUndoPwd()" style="padding:9px 24px;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;background:#4a90d9;color:#fff">确认</button>
+<button onclick="clsUndo()" style="padding:9px 24px;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;background:#eee;color:#666;border:1px solid #ddd">取消</button>
+</div>
+</div></div>
 <div class="toast" id="tst"></div>
 
 <script>
@@ -406,6 +415,29 @@ function setMode(m){
 function doRestart(){init();draw();}
 
 function doUndo(){
+  if(!hist.length){showT('没有可悔的步了');return;}
+  $('undoPwd').value='';
+  $('undoErr').textContent='';
+  $('undoOv').classList.add('on');
+  setTimeout(function(){$('undoPwd').focus();},100);
+}
+
+function chkUndoPwd(){
+  var pwd=$('undoPwd').value;
+  if(pwd==='qq'){
+    clsUndo();execUndo();
+  }else{
+    $('undoErr').textContent='❌ 密码错误，请重试';
+    $('undoPwd').value='';
+    $('undoPwd').focus();
+  }
+}
+
+function clsUndo(){
+  $('undoOv').classList.remove('on');
+}
+
+function execUndo(){
   var h;
   if(!hist.length){showT('没有可悔的步了');return;}
   h=hist.pop();G=h.g;bC=h.b;wC=h.w;cur=h.c;tn--;
